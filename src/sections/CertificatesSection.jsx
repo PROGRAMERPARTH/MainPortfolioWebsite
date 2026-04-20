@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import SectionWrapper from '../components/SectionWrapper';
 import Modal from '../components/Modal';
+import PasswordPromptModal from '../components/PasswordPromptModal';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -22,23 +23,41 @@ const EMPTY_FORM = { title: '', issuer: '', description: '', fileUrl: '' };
 
 export default function CertificatesSection() {
   const { isDark } = useTheme();
-  const { certificates, addCertificate, updateCertificate, deleteCertificate } = useData();
+  const { isAuthenticated, certificates, addCertificate, updateCertificate, deleteCertificate } = useData();
   const [modalOpen, setModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const [editingCert, setEditingCert] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
   // ---- Handlers ----
-  const openAdd = () => {
-    setEditingCert(null);
-    setForm(EMPTY_FORM);
-    setModalOpen(true);
+  const executePendingAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.type === 'add') {
+      setEditingCert(null);
+      setForm(EMPTY_FORM);
+      setModalOpen(true);
+    } else if (pendingAction.type === 'edit') {
+      const cert = pendingAction.payload;
+      setEditingCert(cert);
+      setForm({ title: cert.title, issuer: cert.issuer, description: cert.description, fileUrl: cert.fileUrl });
+      setModalOpen(true);
+    } else if (pendingAction.type === 'delete') {
+      const { id, title } = pendingAction.payload;
+      deleteCertificate(id);
+      toast.success(`"${title}" deleted`);
+    }
+    setPendingAction(null);
+    setAuthModalOpen(false);
   };
 
-  const openEdit = (cert) => {
-    setEditingCert(cert);
-    setForm({ title: cert.title, issuer: cert.issuer, description: cert.description, fileUrl: cert.fileUrl });
-    setModalOpen(true);
+  const requireAuth = (action) => {
+    setPendingAction(action);
+    setAuthModalOpen(true);
   };
+
+  const openAdd = () => requireAuth({ type: 'add' });
+  const openEdit = (cert) => requireAuth({ type: 'edit', payload: cert });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -56,10 +75,7 @@ export default function CertificatesSection() {
     setModalOpen(false);
   };
 
-  const handleDelete = (id, title) => {
-    deleteCertificate(id);
-    toast.success(`"${title}" deleted`);
-  };
+  const handleDelete = (id, title) => requireAuth({ type: 'delete', payload: { id, title } });
 
   return (
     <SectionWrapper
@@ -251,6 +267,13 @@ export default function CertificatesSection() {
           </button>
         </form>
       </Modal>
+
+      {/* Auth Modal */}
+      <PasswordPromptModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={executePendingAction}
+      />
     </SectionWrapper>
   );
 }

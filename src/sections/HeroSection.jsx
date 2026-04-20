@@ -6,9 +6,17 @@
 import { motion } from 'framer-motion';
 import { IoArrowDown, IoDownloadOutline } from 'react-icons/io5';
 import { useTheme } from '../context/ThemeContext';
+import { useData } from '../context/DataContext';
+import { generateResume } from '../utils/generateResume';
 
 export default function HeroSection() {
   const { isDark } = useTheme();
+  const { skills, projects, certificates } = useData();
+
+  const handleDownload = (e) => {
+    e.preventDefault();
+    generateResume(skills, projects, certificates);
+  };
 
   return (
     <section
@@ -107,6 +115,7 @@ export default function HeroSection() {
           </a>
           <a
             href="#resume"
+            onClick={handleDownload}
             className={`inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold border transition-colors duration-300 ${
               isDark
                 ? 'border-white/15 text-surface-200 hover:bg-white/8'

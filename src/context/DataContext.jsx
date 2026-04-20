@@ -101,6 +101,21 @@ export function DataProvider({ children }) {
   const [projects, setProjects] = useState(() => loadFromStorage('portfolio_projects', DEFAULT_PROJECTS));
   const [certificates, setCertificates] = useState(() => loadFromStorage('portfolio_certificates', DEFAULT_CERTIFICATES));
 
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('portfolio_auth') === 'true';
+  });
+
+  const authenticate = (password) => {
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+    if (password === adminPassword) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('portfolio_auth', 'true');
+      return true;
+    }
+    return false;
+  };
+
   // Persist whenever state changes
   useEffect(() => saveToStorage('portfolio_skills', skills), [skills]);
   useEffect(() => saveToStorage('portfolio_projects', projects), [projects]);
@@ -149,6 +164,7 @@ export function DataProvider({ children }) {
     skills, addSkill, updateSkill, deleteSkill,
     projects, addProject, updateProject, deleteProject,
     certificates, addCertificate, updateCertificate, deleteCertificate,
+    isAuthenticated, authenticate,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

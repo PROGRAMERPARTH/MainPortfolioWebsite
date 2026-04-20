@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import SectionWrapper from '../components/SectionWrapper';
 import Modal from '../components/Modal';
+import PasswordPromptModal from '../components/PasswordPromptModal';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -29,8 +30,10 @@ const EMPTY_FORM = {
 
 export default function ProjectsSection() {
   const { isDark } = useTheme();
-  const { projects, addProject, updateProject, deleteProject } = useData();
+  const { isAuthenticated, projects, addProject, updateProject, deleteProject } = useData();
   const [modalOpen, setModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,23 +51,39 @@ export default function ProjectsSection() {
   }, [projects, searchQuery]);
 
   // ---- Handlers ----
-  const openAdd = () => {
-    setEditingProject(null);
-    setForm(EMPTY_FORM);
-    setModalOpen(true);
+  const executePendingAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.type === 'add') {
+      setEditingProject(null);
+      setForm(EMPTY_FORM);
+      setModalOpen(true);
+    } else if (pendingAction.type === 'edit') {
+      const project = pendingAction.payload;
+      setEditingProject(project);
+      setForm({
+        title: project.title,
+        description: project.description,
+        techStack: project.techStack,
+        githubUrl: project.githubUrl,
+        liveUrl: project.liveUrl,
+      });
+      setModalOpen(true);
+    } else if (pendingAction.type === 'delete') {
+      const { id, title } = pendingAction.payload;
+      deleteProject(id);
+      toast.success(`"${title}" deleted`);
+    }
+    setPendingAction(null);
+    setAuthModalOpen(false);
   };
 
-  const openEdit = (project) => {
-    setEditingProject(project);
-    setForm({
-      title: project.title,
-      description: project.description,
-      techStack: project.techStack,
-      githubUrl: project.githubUrl,
-      liveUrl: project.liveUrl,
-    });
-    setModalOpen(true);
+  const requireAuth = (action) => {
+    setPendingAction(action);
+    setAuthModalOpen(true);
   };
+
+  const openAdd = () => requireAuth({ type: 'add' });
+  const openEdit = (project) => requireAuth({ type: 'edit', payload: project });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -82,10 +101,7 @@ export default function ProjectsSection() {
     setModalOpen(false);
   };
 
-  const handleDelete = (id, title) => {
-    deleteProject(id);
-    toast.success(`"${title}" deleted`);
-  };
+  const handleDelete = (id, title) => requireAuth({ type: 'delete', payload: { id, title } });
 
   return (
     <SectionWrapper id="projects" title="Projects" subtitle="Some of my recent work and side projects.">
@@ -331,6 +347,13 @@ export default function ProjectsSection() {
           </button>
         </form>
       </Modal>
+
+      {/* Auth Modal */}
+      <PasswordPromptModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={executePendingAction}
+      />
     </SectionWrapper>
   );
 }

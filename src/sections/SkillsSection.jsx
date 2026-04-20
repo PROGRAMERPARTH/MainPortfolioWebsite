@@ -9,6 +9,7 @@ import { IoAdd, IoCreateOutline, IoTrashOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import SectionWrapper from '../components/SectionWrapper';
 import Modal from '../components/Modal';
+import PasswordPromptModal from '../components/PasswordPromptModal';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -25,23 +26,41 @@ const EMPTY_FORM = { name: '', category: 'Programming', proficiency: 80 };
 
 export default function SkillsSection() {
   const { isDark } = useTheme();
-  const { skills, addSkill, updateSkill, deleteSkill } = useData();
+  const { isAuthenticated, skills, addSkill, updateSkill, deleteSkill } = useData();
   const [modalOpen, setModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const [editingSkill, setEditingSkill] = useState(null); // null = add mode
   const [form, setForm] = useState(EMPTY_FORM);
 
   // ---- Handlers ----
-  const openAdd = () => {
-    setEditingSkill(null);
-    setForm(EMPTY_FORM);
-    setModalOpen(true);
+  const executePendingAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.type === 'add') {
+      setEditingSkill(null);
+      setForm(EMPTY_FORM);
+      setModalOpen(true);
+    } else if (pendingAction.type === 'edit') {
+      const skill = pendingAction.payload;
+      setEditingSkill(skill);
+      setForm({ name: skill.name, category: skill.category, proficiency: skill.proficiency });
+      setModalOpen(true);
+    } else if (pendingAction.type === 'delete') {
+      const { id, name } = pendingAction.payload;
+      deleteSkill(id);
+      toast.success(`"${name}" deleted`);
+    }
+    setPendingAction(null);
+    setAuthModalOpen(false);
   };
 
-  const openEdit = (skill) => {
-    setEditingSkill(skill);
-    setForm({ name: skill.name, category: skill.category, proficiency: skill.proficiency });
-    setModalOpen(true);
+  const requireAuth = (action) => {
+    setPendingAction(action);
+    setAuthModalOpen(true);
   };
+
+  const openAdd = () => requireAuth({ type: 'add' });
+  const openEdit = (skill) => requireAuth({ type: 'edit', payload: skill });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -59,10 +78,7 @@ export default function SkillsSection() {
     setModalOpen(false);
   };
 
-  const handleDelete = (id, name) => {
-    deleteSkill(id);
-    toast.success(`"${name}" deleted`);
-  };
+  const handleDelete = (id, name) => requireAuth({ type: 'delete', payload: { id, name } });
 
   return (
     <SectionWrapper id="skills" title="Skills" subtitle="Technologies and tools I work with.">
@@ -241,6 +257,13 @@ export default function SkillsSection() {
           </button>
         </form>
       </Modal>
+
+      {/* Auth Modal */}
+      <PasswordPromptModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={executePendingAction}
+      />
     </SectionWrapper>
   );
 }

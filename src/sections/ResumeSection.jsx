@@ -6,9 +6,17 @@ import { motion } from 'framer-motion';
 import { IoDownloadOutline, IoDocumentTextOutline, IoEyeOutline } from 'react-icons/io5';
 import SectionWrapper from '../components/SectionWrapper';
 import { useTheme } from '../context/ThemeContext';
+import { useData } from '../context/DataContext';
+import { generateResume } from '../utils/generateResume';
 
 export default function ResumeSection() {
   const { isDark } = useTheme();
+  const { skills, projects, certificates } = useData();
+
+  const handleDownload = (e) => {
+    e.preventDefault();
+    generateResume(skills, projects, certificates);
+  };
 
   return (
     <SectionWrapper id="resume" title="Resume" subtitle="Get a copy of my latest resume.">
@@ -54,10 +62,10 @@ export default function ResumeSection() {
               {/* Download button */}
               <motion.a
                 href="#"
+                onClick={handleDownload}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-primary-500 to-accent-500 shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-shadow"
-                download
               >
                 <IoDownloadOutline size={20} />
                 Download Resume
